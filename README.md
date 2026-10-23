@@ -11,6 +11,8 @@ The application was deployed as the same Dockerized service to Azure Container A
 
 These are the current live demo deployments of the Cybersecurity Analyzer.
 
+The demo deployments are temporary and will remain available for up to 3 days to avoid unnecessary cloud billing. After 3 days, the environments will be destroyed. If you would like to use the demo after it has been removed, request reactivation and I will deploy it again.
+
 ## What it does
 
 Paste Python code into the analyzer and receive a structured security report containing:
@@ -160,7 +162,7 @@ Dockerfile               Multi-stage frontend/backend container build
 
 ## Deployment availability
 
-The demo deployments are intended to remain available and will not be automatically destroyed after 3 days. Availability can still depend on cloud service status, credentials, maintenance, and future infrastructure changes.
+The demo environments are available for a limited 3-day period. To reactivate an expired deployment, request access again and I will bring it back online.
 
 ## Project background
 
