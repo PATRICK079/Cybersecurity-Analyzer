@@ -1,9 +1,7 @@
 # Cybersecurity Analyzer
 
 An AI-powered code security analyzer that combines Semgrep with an OpenAI agent to identify vulnerabilities, explain their impact, and recommend fixes.
-
-![Cybersecurity Analyzer](assets/cyber.png)
-
+~
 ## Live deployments
 
 The application was deployed as the same Dockerized service to Azure Container Apps and Google Cloud Run:
