@@ -116,7 +116,6 @@ The active build pipeline:
 - Checks Terraform formatting
 - Validates both Azure and GCP Terraform configurations
 
-The real cloud deployment jobs are currently commented out in [`deploy.yml`](.github/workflows/deploy.yml). This allows the repository to verify every push without creating cloud resources automatically.
 
 ## Cloud deployment
 
@@ -160,9 +159,6 @@ terraform/gcp/           Google Cloud Run infrastructure
 Dockerfile               Multi-stage frontend/backend container build
 ```
 
-## Deployment availability
-
-The demo environments are available for a limited 3-day period. To reactivate an expired deployment, request access again and I will bring it back online.
 
 ## Project background
 
