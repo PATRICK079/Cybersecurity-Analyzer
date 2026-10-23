@@ -1,0 +1,92 @@
+name: Destroy Environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      cloud:
+        description: Cloud target to destroy
+        required: true
+        type: choice
+        options:
+          - azure
+          - gcp
+      confirm:
+        description: Type the cloud name to confirm destruction
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  destroy:
+    name: Destroy ${{ inputs.cloud }} environment
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Verify confirmation
+        env:
+          CLOUD: ${{ inputs.cloud }}
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [ "$CONFIRM" != "$CLOUD" ]; then
+            echo "Confirmation does not match the selected cloud."
+            exit 1
+          fi
+          echo "Destruction confirmed for $CLOUD."
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Log in to Azure
+        if: inputs.cloud == 'azure'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Destroy Azure infrastructure
+        if: inputs.cloud == 'azure'
+        working-directory: terraform/azure
+        env:
+          ARM_USE_OIDC: true
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          terraform init -input=false
+          terraform destroy -auto-approve \
+            -var="project_name=${{ vars.PROJECT_NAME || 'cyber-analyzer' }}" \
+            -var="resource_group_name=${{ vars.AZURE_RESOURCE_GROUP }}" \
+            -var="openai_api_key=${{ secrets.OPENAI_API_KEY }}" \
+            -var="semgrep_app_token=${{ secrets.SEMGREP_APP_TOKEN }}"
+
+      - name: Authenticate to Google Cloud
+        if: inputs.cloud == 'gcp'
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Destroy GCP infrastructure
+        if: inputs.cloud == 'gcp'
+        working-directory: terraform/gcp
+        env:
+          GOOGLE_PROJECT: ${{ vars.GCP_PROJECT_ID }}
+        run: |
+          terraform init -input=false
+          terraform destroy -auto-approve \
+            -var="project_id=${GOOGLE_PROJECT}" \
+            -var="openai_api_key=${{ secrets.OPENAI_API_KEY }}" \
+            -var="semgrep_app_token=${{ secrets.SEMGREP_APP_TOKEN }}"
+
+      - name: Destruction complete
+        run: echo "Destroy workflow completed for ${{ inputs.cloud }}."

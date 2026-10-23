@@ -1,0 +1,156 @@
+name: Deployment
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  readiness:
+    name: Build deployment
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Lint frontend
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Upload frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/out
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate backend Python
+        run: python -m compileall -q backend
+
+      - name: Build Docker image
+        run: docker build --platform linux/amd64 -t cyber-analyzer:ci .
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Check Terraform formatting
+        run: terraform fmt -check -recursive terraform
+
+      - name: Validate Azure Terraform
+        working-directory: terraform/azure
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+
+      - name: Validate GCP Terraform
+        working-directory: terraform/gcp
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+
+      - name: Deployment status
+        run: echo "✅ Build and validation passed. Real cloud deployment is currently disabled."
+
+
+
+#
+# Azure secrets: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID,
+# AZURE_RESOURCE_GROUP, OPENAI_API_KEY, SEMGREP_APP_TOKEN
+# GCP secrets/variables: GCP_WORKLOAD_IDENTITY_PROVIDER, GCP_SERVICE_ACCOUNT,
+# GCP_PROJECT_ID, OPENAI_API_KEY, SEMGREP_APP_TOKEN
+
+#   deploy-azure:
+#     name: Deploy to Azure Container Apps
+#     needs: readiness
+#     runs-on: ubuntu-latest
+#     environment: production
+#     permissions:
+#       id-token: write
+#       contents: read
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+#       - name: Log in to Azure
+#         uses: azure/login@v2
+#         with:
+#           client-id: ${{ secrets.AZURE_CLIENT_ID }}
+#           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+#           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+#       - name: Set up Terraform
+#         uses: hashicorp/setup-terraform@v3
+#         with:
+#           terraform_wrapper: false
+#       - name: Deploy Azure infrastructure
+#         working-directory: terraform/azure
+#         env:
+#           ARM_USE_OIDC: true
+#           ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+#           ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+#           ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+#         run: |
+#           terraform init -input=false
+#           terraform apply -auto-approve \
+#             -var="project_name=${{ vars.PROJECT_NAME || 'cyber-analyzer' }}" \
+#             -var="resource_group_name=${{ vars.AZURE_RESOURCE_GROUP }}" \
+#             -var="openai_api_key=${{ secrets.OPENAI_API_KEY }}" \
+#             -var="semgrep_app_token=${{ secrets.SEMGREP_APP_TOKEN }}" \
+#             -var="docker_image_tag=${GITHUB_SHA}"
+#           terraform output app_url
+
+#   deploy-gcp:
+#     name: Deploy to Google Cloud Run
+#     needs: readiness
+#     runs-on: ubuntu-latest
+#     environment: production
+#     permissions:
+#       id-token: write
+#       contents: read
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+#       - name: Authenticate to Google Cloud
+#         uses: google-github-actions/auth@v2
+#         with:
+#           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+#           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+#       - name: Set up Terraform
+#         uses: hashicorp/setup-terraform@v3
+#         with:
+#           terraform_wrapper: false
+#       - name: Deploy to Cloud Run
+#         working-directory: terraform/gcp
+#         env:
+#           GOOGLE_PROJECT: ${{ vars.GCP_PROJECT_ID }}
+#         run: |
+#           terraform init -input=false
+#           terraform apply -auto-approve \
+#             -var="project_id=${GOOGLE_PROJECT}" \
+#             -var="openai_api_key=${{ secrets.OPENAI_API_KEY }}" \
+#             -var="semgrep_app_token=${{ secrets.SEMGREP_APP_TOKEN }}" \
+#             -var="docker_image_tag=${GITHUB_SHA}"
+#           terraform output service_url

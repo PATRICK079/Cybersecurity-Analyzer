@@ -33,7 +33,7 @@ resource "random_string" "acr_suffix" {
 locals {
   acr_basename = replace(var.project_name, "-", "") // only letters/numbers
   // keep base to <= 40 so base+6 <= 46 (under 50 char limit)
-  acr_name     = "${substr(local.acr_basename, 0, 40)}${random_string.acr_suffix.result}"
+  acr_name = "${substr(local.acr_basename, 0, 40)}${random_string.acr_suffix.result}"
 }
 
 # Use existing resource group
@@ -67,7 +67,7 @@ provider "docker" {
 # Build and push Docker image
 resource "docker_image" "app" {
   name = "${azurerm_container_registry.acr.login_server}/${var.project_name}:${var.docker_image_tag}"
-  
+
   build {
     context    = "${path.module}/../.."
     dockerfile = "Dockerfile"
@@ -78,7 +78,7 @@ resource "docker_image" "app" {
 
 resource "docker_registry_image" "app" {
   name = docker_image.app.name
-  
+
   depends_on = [docker_image.app]
 }
 
@@ -152,7 +152,7 @@ resource "azurerm_container_app" "main" {
   ingress {
     external_enabled = true
     target_port      = 8000
-    
+
     traffic_weight {
       percentage      = 100
       latest_revision = true
@@ -160,8 +160,8 @@ resource "azurerm_container_app" "main" {
   }
 
   registry {
-    server   = azurerm_container_registry.acr.login_server
-    username = azurerm_container_registry.acr.admin_username
+    server               = azurerm_container_registry.acr.login_server
+    username             = azurerm_container_registry.acr.admin_username
     password_secret_name = "registry-password"
   }
 
