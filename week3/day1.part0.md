@@ -60,10 +60,10 @@ Semgrep is a powerful static analysis tool that finds security vulnerabilities i
 Once logged into Semgrep:
 
 1. Click **Settings** (bottom left corner of the dashboard)
-2. In the main navigation, click **Tokens**
+2. In the main navigation, click **Tokens** and leave API tokens selected on the left  
 3. Click **"Create New Token"**
 4. Configure the token:
-   - **Name**: `cyber-analyzer` (or any name you prefer)
+   - **Name** at the bottom: `cyber-analyzer` (or any name you like)
    - **Scopes**: Check both:
      - ✅ **Agent (CI)**
      - ✅ **Web API**
@@ -175,13 +175,18 @@ You should see output like:
 
 1. Open your browser to http://localhost:3000
    
-   **Important**: Use the `http://localhost:3000` URL, not the Network URL that Next.js displays. The application is configured to work with localhost in development mode.
+   **Important**: Use the `http://localhost:3000` URL, not the IP address based URL that Next.js also displays. The application is configured to work with localhost in development mode.
 
 2. You should see the Cybersecurity Analyzer interface
 3. Click **"Choose File"** and select the `airline.py` file from the project root
    - This file contains intentional security vulnerabilities for testing
 4. Click **"Analyze Code"**
-5. You should see multiple security vulnerabilities detected!
+5. It should take 1-2 minutes, then you should see multiple security vulnerabilities detected!
+
+Note: if you see a warning like this on your server, you can safely ignore it; Semgrep would like you to upgrade to a Pro version, but that's not required for this project:  
+`WARNING  User doesn't have the Pro Engine installed, not running `semgrep mcp` daemon...`    
+
+Also - the first time you run this, Semgrep sometimes gives a timeout error while it's downloading resources. This seems to only happen after a fresh install, and not repeat. If you hit this, just try again. Let me know if this persists..
 
 ### Stopping the Servers
 

@@ -25,6 +25,6 @@ def create_semgrep_server() -> MCPServerStdio:
     params = get_semgrep_server_params()
     return MCPServerStdio(
         params=params,
-        client_session_timeout_seconds=120,
+        client_session_timeout_seconds=240,
         tool_filter=create_static_tool_filter(allowed_tool_names=["semgrep_scan"]),
     )

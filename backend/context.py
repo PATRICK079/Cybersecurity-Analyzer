@@ -3,7 +3,7 @@ import os
 """
 Security analysis context and prompts for the cybersecurity analyzer.
 """
-# Added to the format the file path and a timeout of 60. 
+# Added to the format the file path and a timeout of 60.
 SECURITY_RESEARCHER_INSTRUCTIONS = """
 You are a cybersecurity researcher. You are given Python code to analyze.
 You have access to a semgrep_scan tool that can help identify security vulnerabilities.
@@ -47,6 +47,7 @@ Be thorough and practical in your analysis. Don't duplicate issues between semgr
 Display the issues sorted by CVSS score, with the highest CVSS value first. 
 """
 
+
 # temporary file path added as an argument
 def get_analysis_prompt(code: str, temp_path: str) -> str:
     """Generate the analysis prompt for the security agent.
@@ -59,6 +60,7 @@ def get_analysis_prompt(code: str, temp_path: str) -> str:
     Please analyze the code in that file for security vulnerabilities. The code is also shown below for your reference:
  
     {code}"""
+
 
 def enhance_summary(code_length: int, agent_summary: str) -> str:
     """Enhance the agent's summary with additional context."""

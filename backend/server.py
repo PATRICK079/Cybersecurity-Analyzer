@@ -1,4 +1,4 @@
-import tempfile #to create a file on disk for semgrep_scan
+import tempfile  # to create a file on disk for semgrep_scan
 import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,19 +11,21 @@ from agents import Agent, Runner, trace
 from context import SECURITY_RESEARCHER_INSTRUCTIONS, get_analysis_prompt, enhance_summary
 from mcp_servers import create_semgrep_server
 
-load_dotenv()
+load_dotenv(override=True)
 
 app = FastAPI(title="Cybersecurity Analyzer API")
 
 # Configure CORS for development and production
 cors_origins = [
-    "http://localhost:3000",    # Local development
-    "http://frontend:3000",     # Docker development
+    "http://localhost:3000",  # Local development
+    "http://frontend:3000",  # Docker development
 ]
 
 # In production, allow same-origin requests (static files served from same domain)
 if os.getenv("ENVIRONMENT") == "production":
-    cors_origins.append("*")  # Allow all origins in production since we serve frontend from same domain
+    cors_origins.append(
+        "*"
+    )  # Allow all origins in production since we serve frontend from same domain
 
 app.add_middleware(
     CORSMiddleware,
@@ -85,28 +87,28 @@ async def run_security_analysis(code: str) -> SecurityReport:
         async with create_semgrep_server() as semgrep:
             agent = create_security_agent(semgrep)
             try:
-                with tempfile.NamedTemporaryFile(  #Creates a temporary file locally with teh code
-                    mode="w",
-                    suffix=".py",
-                    delete=False
+                with tempfile.NamedTemporaryFile(  # Creates a temporary file locally with teh code
+                    mode="w", suffix=".py", delete=False
                 ) as temp:
                     temp.write(code)
                     temp_path = temp.name
                 try:
-                    result = await Runner.run(agent, input=get_analysis_prompt(code, temp_path)) #Sends code and path to the file
-                    #Changed the following two lines to sort by CVSS in descending order
-                    sorted_report = result.final_output_as(SecurityReport)                   
+                    result = await Runner.run(
+                        agent, input=get_analysis_prompt(code, temp_path)
+                    )  # Sends code and path to the file
+                    # Changed the following two lines to sort by CVSS in descending order
+                    sorted_report = result.final_output_as(SecurityReport)
                     sorted_report.issues.sort(key=lambda issue: issue.cvss_score, reverse=True)
-                    
+
                     return sorted_report
                 finally:
                     try:
                         os.unlink(temp_path)
                     except OSError:
-                        pass 
+                        pass
             except Exception as err:
                 print(f"Unexpected {err=}, {type(err)=}")
-                raise  
+                raise
 
 
 def format_analysis_response(code: str, report: SecurityReport) -> SecurityReport:
@@ -138,71 +140,6 @@ async def health():
     """Health check endpoint."""
     return {"message": "Cybersecurity Analyzer API"}
 
-@app.get("/network-test")
-async def network_test():
-    """Test network connectivity to Semgrep API."""
-    import httpx
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get("https://semgrep.dev/api/v1/")
-            return {
-                "semgrep_api_reachable": True,
-                "status_code": response.status_code,
-                "response_size": len(response.content)
-            }
-    except Exception as e:
-        return {
-            "semgrep_api_reachable": False,
-            "error": str(e)
-        }
-
-@app.get("/semgrep-test")
-async def semgrep_test():
-    """Test if semgrep CLI can be installed and run."""
-    import subprocess
-    import tempfile
-    import os
-    
-    try:
-        # Test if we can install semgrep via pip
-        result = subprocess.run(
-            ["pip", "install", "semgrep"], 
-            capture_output=True, 
-            text=True, 
-            timeout=60
-        )
-        
-        if result.returncode != 0:
-            return {
-                "semgrep_install": False,
-                "error": f"Install failed: {result.stderr}"
-            }
-        
-        # Test if semgrep --version works
-        version_result = subprocess.run(
-            ["semgrep", "--version"], 
-            capture_output=True, 
-            text=True, 
-            timeout=30
-        )
-        
-        return {
-            "semgrep_install": True,
-            "version_check": version_result.returncode == 0,
-            "version_output": version_result.stdout,
-            "version_error": version_result.stderr
-        }
-        
-    except subprocess.TimeoutExpired:
-        return {
-            "semgrep_install": False,
-            "error": "Timeout during semgrep installation or version check"
-        }
-    except Exception as e:
-        return {
-            "semgrep_install": False,
-            "error": str(e)
-        }
 
 # Mount static files for frontend
 if os.path.exists("static"):
