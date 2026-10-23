@@ -1,3 +1,4 @@
+import tempfile #to create a file on disk for semgrep_scan
 import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -83,8 +84,29 @@ async def run_security_analysis(code: str) -> SecurityReport:
     with trace("Security Researcher"):
         async with create_semgrep_server() as semgrep:
             agent = create_security_agent(semgrep)
-            result = await Runner.run(agent, input=get_analysis_prompt(code))
-            return result.final_output_as(SecurityReport)
+            try:
+                with tempfile.NamedTemporaryFile(  #Creates a temporary file locally with teh code
+                    mode="w",
+                    suffix=".py",
+                    delete=False
+                ) as temp:
+                    temp.write(code)
+                    temp_path = temp.name
+                try:
+                    result = await Runner.run(agent, input=get_analysis_prompt(code, temp_path)) #Sends code and path to the file
+                    #Changed the following two lines to sort by CVSS in descending order
+                    sorted_report = result.final_output_as(SecurityReport)                   
+                    sorted_report.issues.sort(key=lambda issue: issue.cvss_score, reverse=True)
+                    
+                    return sorted_report
+                finally:
+                    try:
+                        os.unlink(temp_path)
+                    except OSError:
+                        pass 
+            except Exception as err:
+                print(f"Unexpected {err=}, {type(err)=}")
+                raise  
 
 
 def format_analysis_response(code: str, report: SecurityReport) -> SecurityReport:
